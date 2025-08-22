@@ -1,4 +1,3 @@
-// src/App.tsx (Correct)
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Auth from './pages/Auth';
 import OAuthCallback from './pages/OAuthCallback';
@@ -8,24 +7,37 @@ import { useState, useEffect } from 'react';
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (token) {
       setIsAuthenticated(true);
     }
+    setIsLoading(false);
   }, []);
 
+  // Show loading while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
+
   return (
-    <Routes> // Start directly with Routes
+    <Routes>
       <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Home />} />
-      <Route path="/auth" element={<Auth />} />
-      <Route path="/google-login" element={<OAuthCallback />} />
-      <Route path="/linkedin-login" element={<OAuthCallback />} />
-      <Route path="/microsoft-login" element={<OAuthCallback />} />
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Auth />} />
+      <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Auth />} />
+      <Route path="/auth" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Auth />} />
+      
+      <Route path="/auth/callback" element={<OAuthCallback />} />
+      
       <Route 
         path="/dashboard" 
-        element={isAuthenticated ? <Dashboard /> : <Navigate to="/" replace />} 
+        element={<Dashboard />} 
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

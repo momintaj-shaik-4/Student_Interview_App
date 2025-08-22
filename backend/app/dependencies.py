@@ -8,7 +8,7 @@ from app.models.user_model import User
 
 SessionDep = Annotated[Session, Depends(get_session)]
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
 def get_curr_user(token:Annotated[str,Depends(oauth2_scheme)],session:SessionDep):
     payload = decode_token(token)
