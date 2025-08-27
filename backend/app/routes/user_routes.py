@@ -1,10 +1,9 @@
-from fastapi import  Depends, HTTPException, APIRouter, Request
+from fastapi import Depends, HTTPException, APIRouter, Request
 from typing import Annotated
-from sqlmodel import select
 from fastapi.security import OAuth2PasswordRequestForm
 from app.models.user_model import User
 from app.auth import create_access_token, hash_password, verify_password
-from app.schemas.user_schemas import CreateUser, Token
+from app.schemas.user_schemas import CreateUser, Token  # Fixed schema import
 from app.dependencies import SessionDep, get_curr_user
 from datetime import timedelta
 from google.auth.transport import requests as google_requests
@@ -25,16 +24,15 @@ LINKEDIN_CLIENT_ID = os.getenv("LINKEDIN_CLIENT_ID")
 LINKEDIN_CLIENT_SECRET = os.getenv("LINKEDIN_CLIENT_SECRET")
 LINKEDIN_REDIRECT_URI = os.getenv("LINKEDIN_REDIRECT_URI")
 
-
 MICROSOFT_CLIENT_ID = os.getenv("MICROSOFT_CLIENT_ID")
 MICROSOFT_CLIENT_SECRET = os.getenv("MICROSOFT_CLIENT_SECRET")
 MICROSOFT_REDIRECT_URI = os.getenv("MICROSOFT_REDIRECT_URI")
-MICROSOFT_TENANT_ID = os.getenv("MICROSOFT_TENANT_ID", "common") 
-
+MICROSOFT_TENANT_ID = os.getenv("MICROSOFT_TENANT_ID", "common")
 
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 
 FRONTEND_URL = os.getenv("FRONTEND_URL")
+
 # Setup OAuth
 oauth = OAuth()
 
@@ -112,9 +110,8 @@ async def google_login(request: Request, session: SessionDep):
             user_response = await client.get(user_info_url, headers=headers)
             user_data = user_response.json()
         
-        existing_user = session.exec(
-            select(User).where(User.email == user_data["email"])
-        ).first()
+        # Use regular SQLAlchemy query syntax
+        existing_user = session.query(User).filter(User.email == user_data["email"]).first()
         
         if existing_user:
             # User exists, create access token and return
@@ -132,10 +129,10 @@ async def google_login(request: Request, session: SessionDep):
             hashed_password = hash_password(random_password)
             
             new_user = User(
-                name=user_data.get("name", "Google User"),  # Google provides name
-                email=user_data["email"],  # Google provides email
-                password=hashed_password,  # Random password since they use OAuth
-                city=None  # Google doesn't provide city, can be updated later
+                name=user_data.get("name", "Google User"),
+                email=user_data["email"],
+                password=hashed_password,
+                city=None
             )
             
             session.add(new_user)
@@ -156,12 +153,9 @@ async def google_login(request: Request, session: SessionDep):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Login failed: {str(e)}")
 
-
-
 @router.get("/linkedin")
 async def login_linkedin(request: Request):
     return await oauth.linkedin.authorize_redirect(request, redirect_uri=LINKEDIN_REDIRECT_URI)
-
 
 @router.get("/linkedin-login")  
 async def linkedin_login(request: Request, session: SessionDep):
@@ -270,9 +264,8 @@ async def linkedin_login(request: Request, session: SessionDep):
         if not user_data or not user_data.get("email"):
             raise HTTPException(status_code=400, detail="Could not retrieve user data from LinkedIn")
         
-        existing_user = session.exec(
-            select(User).where(User.email == user_data["email"])
-        ).first()
+        # Use regular SQLAlchemy query syntax
+        existing_user = session.query(User).filter(User.email == user_data["email"]).first()
         
         if existing_user:
             # User exists, create access token and return
@@ -294,10 +287,10 @@ async def linkedin_login(request: Request, session: SessionDep):
                 user_name = "LinkedIn User"
             
             new_user = User(
-                name=user_name,  # LinkedIn provides name
-                email=user_data["email"],  # LinkedIn provides email
-                password=hashed_password,  # Random password since they use OAuth
-                city=None  # LinkedIn doesn't provide city, can be updated later
+                name=user_name,
+                email=user_data["email"],
+                password=hashed_password,
+                city=None
             )
             
             session.add(new_user)
@@ -318,12 +311,9 @@ async def linkedin_login(request: Request, session: SessionDep):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Login failed: {str(e)}")
 
-    
-
 @router.get("/microsoft")
 async def login_microsoft(request: Request):
     return await oauth.microsoft.authorize_redirect(request, redirect_uri=MICROSOFT_REDIRECT_URI)
-
 
 @router.get("/microsoft-login")  
 async def microsoft_login(request: Request, session: SessionDep):
@@ -390,9 +380,8 @@ async def microsoft_login(request: Request, session: SessionDep):
         user_email = user_data.get("mail") or user_data.get("userPrincipalName")
         user_name = user_data.get("displayName", "Microsoft User")
         
-        existing_user = session.exec(
-            select(User).where(User.email == user_email)
-        ).first()
+        # Use regular SQLAlchemy query syntax
+        existing_user = session.query(User).filter(User.email == user_email).first()
         
         if existing_user:
             # User exists, create access token and return
@@ -409,10 +398,10 @@ async def microsoft_login(request: Request, session: SessionDep):
             hashed_password = hash_password(random_password)
             
             new_user = User(
-                name=user_name,  # Microsoft provides displayName
-                email=user_email,  # Microsoft provides email
-                password=hashed_password,  # Random password since they use OAuth
-                city=None  # Microsoft doesn't provide city, can be updated later
+                name=user_name,
+                email=user_email,
+                password=hashed_password,
+                city=None
             )
             
             session.add(new_user)
@@ -433,39 +422,45 @@ async def microsoft_login(request: Request, session: SessionDep):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Login failed: {str(e)}")
 
-
 @router.post("/register")
-def register(session:SessionDep,user_data:CreateUser):  
-    if session.exec(select(User).where(User.email==user_data.email)).first():     
-        raise HTTPException(status_code=400,detail="Email is already registered")
+def register(session: SessionDep, user_data: CreateUser):  
+    # Use regular SQLAlchemy query syntax
+    existing_user = session.query(User).filter(User.email == user_data.email).first()
+    
+    if existing_user:     
+        raise HTTPException(status_code=400, detail="Email is already registered")
+    
     hash_pwd = hash_password(user_data.password)
 
-    user = User(name=user_data.name,email=user_data.email,password=hash_pwd,city=user_data.password)
+    user = User(
+        name=user_data.name,
+        email=user_data.email,
+        password=hash_pwd,
+        city=user_data.city  # Fixed: was user_data.password
+    )
     session.add(user)
     session.commit()
     session.refresh(user)
     return user
 
-
-@router.post("/login",response_model=Token)
-def login(session:SessionDep,form_data:Annotated[OAuth2PasswordRequestForm,Depends()]):
-    user = session.exec(select(User).where(User.email==form_data.username)).first()
+@router.post("/login", response_model=Token)
+def login(session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    # Use regular SQLAlchemy query syntax
+    user = session.query(User).filter(User.email == form_data.username).first()
 
     if not user:
-        raise HTTPException(status_code=404,detail="Invalid Credentials")
+        raise HTTPException(status_code=404, detail="Invalid Credentials")
 
-    pwd = verify_password(form_data.password,user.password)
+    pwd = verify_password(form_data.password, user.password)
 
     if not pwd:
-        raise HTTPException(status_code=404,detail="Invalid Credentials")
+        raise HTTPException(status_code=404, detail="Invalid Credentials")
 
     expire = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    token=create_access_token(data={"sub":user.email},expires_delta=expire)
-    return {"access_token":token,"token_type":"bearer"}
-
- 
+    token = create_access_token(data={"sub": user.email}, expires_delta=expire)
+    return {"access_token": token, "token_type": "bearer"}
 
 @router.get("/profile")
-def profile(current_user:Annotated[User,Depends(get_curr_user)]):
-    return {"name":current_user,"email":current_user.email}
+def profile(current_user: Annotated[User, Depends(get_curr_user)]):
+    return {"name": current_user.name, "email": current_user.email}  # Fixed: was current_user for name
