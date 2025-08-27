@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-const roles = ['Backend Developer', 'Frontend Designer', 'Data Analyst', 'AI/ML Engineer', 'Product Manager'];
+const roles = ['Software Engineer', 'Product Engineer', 'AI/ML Engineer', 'Cybersecurity Analyst', 'Business Analyst', 'Human Resources', 'Financial Analyst'];
 
 const features = [
   { icon: '🎙️', title: 'Tailored Mock Interviews', desc: 'Personalized AI-powered interview experience aligned with your skills.' },
