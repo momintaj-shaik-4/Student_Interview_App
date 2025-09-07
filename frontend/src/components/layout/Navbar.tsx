@@ -1,15 +1,17 @@
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/Button'
 import { User, LogOut, CreditCard, FileText, Briefcase, Home } from 'lucide-react'
 
 export function Navbar() {
-  const { user, isAuthenticated, logout } = useAuth()
   const navigate = useNavigate()
 
+  const isAuthenticated = !!localStorage.getItem('access_token')
+  const userName = localStorage.getItem('name') || 'User'
+
   const handleLogout = () => {
-    logout()
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('name')
     navigate('/login')
   }
 
@@ -62,7 +64,7 @@ export function Navbar() {
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
                   <User className="h-4 w-4" />
-                  <span className="text-sm font-medium">{user?.name}</span>
+                  <span className="text-sm font-medium">{userName}</span>
                 </div>
                 <Button variant="ghost" size="sm" onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />

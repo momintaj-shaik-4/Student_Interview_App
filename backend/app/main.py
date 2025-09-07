@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from app.database import engine, Base
 from app.routes import auth_router, profile_router, roles_router, cv_router, payment_router
 
@@ -7,6 +8,9 @@ from app.routes import auth_router, profile_router, roles_router, cv_router, pay
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Student Interview App API", version="1.0.0")
+
+# Add session middleware (required for OAuth)
+app.add_middleware(SessionMiddleware, secret_key="your-secret-key-change-in-production")
 
 # Add CORS middleware
 app.add_middleware(

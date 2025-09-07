@@ -124,6 +124,17 @@ def _issue_tokens_response(session: Session, user: User) -> Response:
     )
     return response
 
+def _issue_tokens_data(session: Session, user: User) -> dict:
+    """Helper function to get token data for OAuth redirects"""
+    expire = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access = create_access_token(data={"sub": user.email}, expires_delta=expire)
+    refresh = create_refresh_token(data={"sub": user.email})
+    # persist refresh token
+    user.refresh_token = refresh
+    session.add(user)
+    session.commit()
+    return {"access_token": access, "token_type": "bearer"}
+
 @router.get("/google")
 async def login_google(request: Request):
     return await oauth.google.authorize_redirect(request, redirect_uri=GOOGLE_REDIRECT_URI)
@@ -154,7 +165,12 @@ async def google_login(request: Request, session: SessionDep):
             user_data = user_response.json()
         existing_user = session.query(User).filter(User.email == user_data["email"]).first()
         if existing_user:
-            return _issue_tokens_response(session, existing_user)
+            tokens = _issue_tokens_data(session, existing_user)
+            # Redirect to frontend with token
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+            return RedirectResponse(
+                url=f"{frontend_url}/auth/callback?token={tokens['access_token']}&name={user_data.get('name', 'User')}"
+            )
         else:
             random_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
             hashed_password = hash_password(random_password)
@@ -168,7 +184,12 @@ async def google_login(request: Request, session: SessionDep):
             session.commit()
             session.refresh(new_user)
             create_complete_user_setup(session, new_user)
-            return _issue_tokens_response(session, new_user)
+            tokens = _issue_tokens_data(session, new_user)
+            # Redirect to frontend with token
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+            return RedirectResponse(
+                url=f"{frontend_url}/auth/callback?token={tokens['access_token']}&name={user_data.get('name', 'User')}"
+            )
     except HTTPException:
         raise
     except Exception as e:
@@ -230,7 +251,11 @@ async def linkedin_login(request: Request, session: SessionDep):
             raise HTTPException(status_code=400, detail="Could not retrieve user data from LinkedIn")
         existing_user = session.query(User).filter(User.email == user_data["email"]).first()
         if existing_user:
-            return _issue_tokens_response(session, existing_user)
+            tokens = _issue_tokens_data(session, existing_user)
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+            return RedirectResponse(
+                url=f"{frontend_url}/auth/callback?token={tokens['access_token']}&name={user_data.get('name', 'User')}"
+            )
         else:
             random_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
             hashed_password = hash_password(random_password)
@@ -242,7 +267,11 @@ async def linkedin_login(request: Request, session: SessionDep):
             session.commit()
             session.refresh(new_user)
             create_complete_user_setup(session, new_user)
-            return _issue_tokens_response(session, new_user)
+            tokens = _issue_tokens_data(session, new_user)
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+            return RedirectResponse(
+                url=f"{frontend_url}/auth/callback?token={tokens['access_token']}&name={user_name}"
+            )
     except HTTPException:
         raise  
     except Exception as e:
@@ -288,7 +317,11 @@ async def microsoft_login(request: Request, session: SessionDep):
         user_name = user_data.get("displayName", "Microsoft User")
         existing_user = session.query(User).filter(User.email == user_email).first()
         if existing_user:
-            return _issue_tokens_response(session, existing_user)
+            tokens = _issue_tokens_data(session, existing_user)
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+            return RedirectResponse(
+                url=f"{frontend_url}/auth/callback?token={tokens['access_token']}&name={user_name}"
+            )
         else:
             random_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
             hashed_password = hash_password(random_password)
@@ -297,7 +330,11 @@ async def microsoft_login(request: Request, session: SessionDep):
             session.commit()
             session.refresh(new_user)
             create_complete_user_setup(session, new_user)
-            return _issue_tokens_response(session, new_user)
+            tokens = _issue_tokens_data(session, new_user)
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+            return RedirectResponse(
+                url=f"{frontend_url}/auth/callback?token={tokens['access_token']}&name={user_name}"
+            )
     except HTTPException:
         raise  
     except Exception as e:
